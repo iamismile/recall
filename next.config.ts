@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     "@huggingface/transformers",
     "sharp",
     "onnxruntime-node",
+    "pdf-parse",
+    "@napi-rs/canvas",
   ],
 };
 
