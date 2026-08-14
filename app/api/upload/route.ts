@@ -6,18 +6,21 @@ import { extractTextFromFile } from "@/app/lib/parsers";
 import { chunkText } from "@/app/lib/chunker";
 import { embedTexts } from "@/app/lib/embeddings";
 import { addChunks } from "@/app/lib/vectordb";
+import { addChunksToIndex } from "@/app/lib/minisearch";
 import { Chunk } from "@/app/lib/types";
 
 export async function POST(request: NextRequest) {
   try {
+    // Get the uploaded file from the form data.
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
+    // Make sure a file was uploaded.
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Save file temporarily
+    // Check whether the file type is supported
     const fileExt = path.extname(file.name).toLowerCase();
     const allowedExts = [".txt", ".md", ".pdf"];
     if (!allowedExts.includes(fileExt)) {
@@ -27,14 +30,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Save the uploaded file temporarily.
+    // We need an actual file on disk because our text extraction
+    // functions work with file paths.
     const tempDir = path.join(process.cwd(), "tmp");
     await fs.mkdir(tempDir, { recursive: true });
+
+    // Generate a unique temporary file name.
     const tempFilePath = path.join(tempDir, `${randomUUID()}${fileExt}`);
+
+    // Convert the uploaded file into a Buffer and save it
     const buffer = Buffer.from(await file.arrayBuffer());
     await fs.writeFile(tempFilePath, buffer);
 
-    // Extract text
+    // Extract text from the uploaded file
     const text = await extractTextFromFile(tempFilePath, fileExt.slice(1));
+
+    // Make sure the file actually contained readable text.
     if (!text || text.trim().length === 0) {
       return NextResponse.json(
         { error: "No text could be extracted from the file" },
@@ -42,7 +54,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Chunk and embed
+    /**
+     * Split the document into smaller pieces.
+     *
+     * We don't embed the entire document as one vector.
+     * Instead, we create smaller chunks so search can find
+     * the specific part of the document that is relevant.
+     */
     const chunks = chunkText(text);
     const chunkObjects: Chunk[] = chunks.map((chunkText, i) => ({
       id: randomUUID(),
@@ -51,12 +69,19 @@ export async function POST(request: NextRequest) {
       chunkIndex: i,
     }));
 
+    // Convert every chunk into an embedding vector
+    // These vectors will be used for semantic/vector search
     const vectors = await embedTexts(chunks);
 
-    // Store in LanceDB
-    await addChunks(chunkObjects, vectors);
+    // Store the chunks in both search system
+    // LanceDB: Vector/semantic search
+    // MiniSearch: BM25/keyword search.
+    await Promise.all([
+      addChunks(chunkObjects, vectors),
+      addChunksToIndex(chunkObjects),
+    ]);
 
-    // Clean up temp file
+    // The temporary file is no longer needed, so remove it
     await fs.unlink(tempFilePath);
 
     return NextResponse.json({
