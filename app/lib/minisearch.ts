@@ -39,7 +39,7 @@ function createIndex(): MiniSearch {
     idField: "id",
 
     // These fields will be available when we get search results.
-    storeFields: ["id", "text", "source"],
+    storeFields: ["id", "text", "source", "chunkIndex"],
 
     // Break text into individual words.
     tokenize: (text) => text.split(/[\s\-.,!?;:()"']+/),
@@ -144,7 +144,12 @@ export async function addChunksToIndex(chunks: IndexDocument[]): Promise<void> {
   // Keep only documents that haven't been indexed yet.
   const fresh = chunks
     .filter((c) => !existing.has(c.id))
-    .map(({ id, text, source }): IndexDocument => ({ id, text, source }));
+    .map(({ id, text, source, chunkIndex }): IndexDocument => ({
+      id,
+      text,
+      source,
+      chunkIndex,
+    }));
 
   if (fresh.length > 0) {
     // Add the new documents to the BM25 index.
@@ -186,6 +191,7 @@ export async function searchBM25(
     id: String(hit.id),
     text: hit.text,
     source: hit.source,
+    chunkIndex: (hit as unknown as { chunkIndex?: number }).chunkIndex ?? 0,
     score: hit.score,
   }));
 }

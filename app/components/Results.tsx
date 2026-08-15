@@ -14,7 +14,11 @@ export default function Results({ results }: ResultsProps) {
       {results.map((result, idx) => (
         <div key={idx} className="p-4 bg-white rounded-lg shadow">
           <p className="text-sm text-gray-500 mb-2">
-            Source: {result.source} (score: {result.score.toFixed(3)})
+            <span className="font-medium text-gray-600">📄 {result.source}</span>
+            <span className="mx-1">·</span>
+            <span>chunk {result.chunkIndex + 1}</span>
+            <span className="mx-1">·</span>
+            <span>score {result.score.toFixed(3)}</span>
           </p>
           <p className="text-gray-800">{result.text}</p>
         </div>

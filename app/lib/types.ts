@@ -9,6 +9,7 @@ export interface SearchResult {
   id: string;
   text: string;
   source: string;
+  chunkIndex: number;
   score: number;
 }
 
@@ -17,4 +18,5 @@ export interface IndexDocument {
   id: string;
   text: string;
   source: string;
+  chunkIndex: number;
 }

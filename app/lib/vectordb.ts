@@ -6,6 +6,7 @@ type LanceSearchRow = {
   id: string;
   text: string;
   source: string;
+  chunkIndex: number;
   _distance: number;
 };
 
@@ -58,12 +59,22 @@ export async function addChunks(
     id: chunk.id,
     text: chunk.text,
     source: chunk.source,
+    chunkIndex: chunk.chunkIndex,
     vector: vectors[i],
   }));
 
   // If the table already exists, add the new chunks to it.
   if (await tableExists(connection)) {
-    await connection.openTable(TABLE_NAME).then((t) => t.add(data));
+    const table = await connection.openTable(TABLE_NAME);
+    try {
+      await table.add(data);
+    } catch {
+      // The existing table was created with an older schema
+      // (e.g. before chunkIndex was stored). Recreate it so new
+      // rows match, dropping previously indexed data.
+      await connection.dropTable(TABLE_NAME);
+      await connection.createTable(TABLE_NAME, data);
+    }
   } else {
     // If the table doesn't exist, create it using our first batch of data.
     await connection.createTable(TABLE_NAME, data);
@@ -103,6 +114,7 @@ export async function searchSimilar(
     id: row.id,
     text: row.text,
     source: row.source,
+    chunkIndex: row.chunkIndex ?? 0,
     score: row._distance,
   }));
 }
