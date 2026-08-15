@@ -80,15 +80,7 @@ const mdComponents = {
 };
 
 export default function Answer({ answer, isLoading, error }: AnswerProps) {
-  if (isLoading) {
-    return (
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-blue-700">Generating answer…</p>
-      </div>
-    );
-  }
-
-  if (error) {
+  if (error && !answer) {
     return (
       <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
         <p className="text-yellow-800 text-sm">
@@ -99,15 +91,32 @@ export default function Answer({ answer, isLoading, error }: AnswerProps) {
     );
   }
 
-  if (!answer) return null;
+  if (!answer) {
+    if (isLoading) {
+      return (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-blue-700">Generating answer…</p>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-      <h2 className="text-sm font-semibold text-blue-800 mb-2">Answer</h2>
+      <h2 className="text-sm font-semibold text-blue-800 mb-2">
+        Answer
+        {isLoading && (
+          <span className="ml-2 text-blue-400 animate-pulse">streaming…</span>
+        )}
+      </h2>
       <div className="text-gray-800 text-sm">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
           {answer}
         </ReactMarkdown>
+        {isLoading && (
+          <span className="inline-block w-2 h-4 bg-blue-500 align-middle animate-pulse" />
+        )}
       </div>
     </div>
   );

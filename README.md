@@ -53,7 +53,7 @@ robust to queries that are either semantic or lexical.
 ## API
 
 - `POST /api/upload` — upload a file (form-data `file`). Upserts by filename.
-- `POST /api/search` — `{ query }` → `{ results, answer, answerError }`.
+- `POST /api/search` — `{ query }` → **Server-Sent Events** stream: `sources` (retrieved chunks, sent first), `token` (answer text deltas), `error` (generation failure), `done`.
 - `GET  /api/documents` — list indexed documents (`docId`, source, chunks).
 - `DELETE /api/documents?docId=…` — delete a document and all its chunks.
 

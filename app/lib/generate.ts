@@ -1,34 +1,27 @@
 import { GoogleGenAI } from "@google/genai";
 import { SearchResult } from "./types";
 
-// gemini-2.5-flash is fast, cheap, and GA. Override with GEMINI_MODEL
-// if you want a different model (e.g. gemini-3-flash-preview).
+// Gemini model used to generate the final answer.
+// Can change it using the GEMINI_MODEL environment variable.
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
 /**
- * Generates a grounded answer from the retrieved contexts using Gemini.
+ * Creates the prompt that will be sent to Gemini.
  *
- * This is the "G" in RAG: we take the chunks that hybrid search
- * retrieved and ask the model to answer the question using ONLY
- * those chunks, citing them inline with [1], [2], ... markers.
+ * This is where we connect retrieval with generation.
  *
- * The context is numbered so the citations line up with the source
- * chunks we display to the user.
+ * The search system has already found relevant document chunks.
+ * We give those chunks to Gemini as context and ask it to answer
+ * the user's question using only that information.
+ *
+ * Each chunk gets a number such as [1], [2], etc.
+ * Gemini can use these numbers when citing its answer.
  */
-export async function generateAnswer(
-  query: string,
-  contexts: SearchResult[],
-): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is not set");
-  }
-
-  const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL;
-  const ai = new GoogleGenAI({ apiKey });
-
-  // Numbered context block. The numbers double as citations the
-  // model can reference inline (e.g. [1]).
+function buildPrompt(query: string, contexts: SearchResult[]): string {
+  // Convert the retrieved chunks into a numbered context.
+  // Example:
+  // [1] source: notes.md
+  // Authentication uses JWT tokens...
   const contextText = contexts
     .map(
       (c, i) =>
@@ -36,7 +29,8 @@ export async function generateAnswer(
     )
     .join("\n\n");
 
-  const prompt = `You are Recall, a retrieval-augmented assistant for a user's personal documents.
+  // Tells Gemini how it should use the retrieved information.
+  return `You are Recall, a retrieval-augmented assistant for a user's personal documents.
 
 Answer the user's question using ONLY the context provided below.
 
@@ -53,11 +47,39 @@ QUESTION:
 ${query}
 
 ANSWER:`;
+}
 
-  const response = await ai.models.generateContent({
+/**
+ * Generates an answer using the retrieved document chunks
+ *
+ * Yields text deltas as they arrive so the UI can render the answer
+ * token-by-token. Throws if the API key is missing.
+ */
+export async function* streamAnswer(
+  query: string,
+  contexts: SearchResult[],
+): AsyncGenerator<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY environment variable is not set");
+  }
+
+  const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Build the prompt using the user's question and retrieved chunks.
+  const prompt = buildPrompt(query, contexts);
+
+  // Gemini generates the answer as a stream.
+  const stream = await ai.models.generateContentStream({
     model: modelName,
     contents: prompt,
   });
 
-  return response.text ?? "";
+  // Read each piece of the response as it arrives.
+  // `yield` sends each piece to the caller immediately.
+  for await (const chunk of stream) {
+    const text = chunk.text;
+    if (text) yield text;
+  }
 }

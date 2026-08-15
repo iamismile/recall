@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { embedTexts } from "@/app/lib/embeddings";
+import { streamAnswer } from "@/app/lib/generate";
 import { searchHybrid } from "@/app/lib/search";
-import { generateAnswer } from "@/app/lib/generate";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,39 +16,71 @@ export async function POST(request: NextRequest) {
     // Convert the user's query into an embedding vector
     const queryVector = (await embedTexts([query]))[0];
 
-    /**
-     * Perform hybrid search.
-     *
-     * Vector Search:
-     * - Finds documents with similar meaning.
-     *
-     * BM25:
-     * - Finds documents with matching keywords.
-     *
-     * RRF:
-     * - Combines the rankings from both search methods.
-     *
-     * Return the top 5 results.
-     */
+    // Retrieve relevant document chunks using hybrid search.
+    // Vector Search: Finds chunks with similar meaning.
+    // BM25: Finds chunks containing relevant keywords.
+    // RRF:  Combines the rankings from both search methods.
+    // We retrieve the top 5 final results
     const results = await searchHybrid(query, queryVector, 5);
 
-    // Generation step (the "G" in RAG): ask Gemini to answer the
-    // question grounded in the retrieved chunks. If retrieval found
-    // nothing, or generation fails, we still return the sources.
-    let answer: string | null = null;
-    let answerError: string | null = null;
+    // Create a Server-Sent Events (SSE) stream.
+    // Client will receives:
+    // 1. `sources` — retrieved document chunks.
+    // 2. `token`   — generated answer text as it arrives.
+    // 3. `error`   — generation error.
+    // 4. `done`    — signals that the stream has finished.
+    const encoder = new TextEncoder();
 
-    if (results.length > 0) {
-      try {
-        answer = await generateAnswer(query, results);
-      } catch (err) {
-        answerError =
-          err instanceof Error ? err.message : "Failed to generate answer";
-        console.error("Generation error:", err);
-      }
-    }
+    const stream = new ReadableStream({
+      async start(controller) {
+        // Helper function for sending an SSE event.
+        const send = (event: string, data: unknown) =>
+          controller.enqueue(
+            encoder.encode(
+              `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
+            ),
+          );
 
-    return NextResponse.json({ results, answer, answerError });
+        // Send the retrieved sources before generating the answer.
+        send("sources", results);
+
+        // If no relevant documents were found, finish the stream.
+        if (results.length === 0) {
+          send("done", {});
+          controller.close();
+          return;
+        }
+
+        try {
+          // Stream Gemini's response as it is generated.
+          for await (const token of streamAnswer(query, results)) {
+            send("token", token);
+          }
+
+          // Tell the client that generation has finished.
+          send("done", {});
+        } catch (err) {
+          // Send generation errors to the client.
+          send(
+            "error",
+            err instanceof Error ? err.message : "Failed to generate answer",
+          );
+        } finally {
+          // Close the SSE connection.
+          controller.close();
+        }
+      },
+    });
+
+    // `text/event-stream` tells the client that the response
+    // contains Server-Sent Events instead of a normal JSON response.
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
   } catch (error) {
     console.error("Search error:", error);
     return NextResponse.json(
