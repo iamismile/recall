@@ -4,6 +4,7 @@ import { Chunk, SearchResult } from "./types";
 
 type LanceSearchRow = {
   id: string;
+  docId: string;
   text: string;
   source: string;
   chunkIndex: number;
@@ -57,6 +58,7 @@ export async function addChunks(
   // Combine the text information with its embedding vector.
   const data = chunks.map((chunk, i) => ({
     id: chunk.id,
+    docId: chunk.docId,
     text: chunk.text,
     source: chunk.source,
     chunkIndex: chunk.chunkIndex,
@@ -116,5 +118,55 @@ export async function searchSimilar(
     source: row.source,
     chunkIndex: row.chunkIndex ?? 0,
     score: row._distance,
+  }));
+}
+
+/**
+ * Removes every chunk that belongs to the given document id.
+ *
+ * This is the canonical delete path: a docId uniquely identifies a
+ * single indexed document regardless of its file name.
+ */
+export async function deleteByDocId(docId: string): Promise<void> {
+  const connection = await getDB();
+  if (!(await tableExists(connection))) return;
+
+  const tbl = await connection.openTable(TABLE_NAME);
+  await tbl.delete(`docId = '${docId}'`);
+}
+
+/**
+ * Returns the distinct documents currently stored,
+ * along with how many chunks each one has.
+ *
+ * Identity is the document id (docId); the source file name is
+ * only used for display.
+ */
+export async function getSources(): Promise<
+  { docId: string; source: string; chunks: number }[]
+> {
+  const connection = await getDB();
+  if (!(await tableExists(connection))) return [];
+
+  const tbl = await connection.openTable(TABLE_NAME);
+  const rows = (await tbl.query().select(["docId", "source"]).toArray()) as {
+    docId: string;
+    source: string;
+  }[];
+
+  const counts = new Map<string, { source: string; chunks: number }>();
+  for (const row of rows) {
+    const existing = counts.get(row.docId);
+    if (existing) {
+      existing.chunks += 1;
+    } else {
+      counts.set(row.docId, { source: row.source, chunks: 1 });
+    }
+  }
+
+  return [...counts.entries()].map(([docId, { source, chunks }]) => ({
+    docId,
+    source,
+    chunks,
   }));
 }

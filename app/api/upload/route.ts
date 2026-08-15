@@ -5,8 +5,15 @@ import { randomUUID } from "crypto";
 import { extractTextFromFile } from "@/app/lib/parsers";
 import { chunkText } from "@/app/lib/chunker";
 import { embedTexts } from "@/app/lib/embeddings";
-import { addChunks } from "@/app/lib/vectordb";
-import { addChunksToIndex } from "@/app/lib/minisearch";
+import {
+  addChunks,
+  deleteByDocId as deleteVectorByDocId,
+} from "@/app/lib/vectordb";
+import {
+  addChunksToIndex,
+  deleteIndexByDocId,
+  getSources,
+} from "@/app/lib/minisearch";
 import { Chunk } from "@/app/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -30,9 +37,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Save the uploaded file temporarily.
-    // We need an actual file on disk because our text extraction
-    // functions work with file paths.
+    // Save the uploaded file temporarily. We need an actual file on disk
+    // because our text extraction functions work with file paths.
     const tempDir = path.join(process.cwd(), "tmp");
     await fs.mkdir(tempDir, { recursive: true });
 
@@ -62,8 +68,15 @@ export async function POST(request: NextRequest) {
      * the specific part of the document that is relevant.
      */
     const chunks = chunkText(text);
+
+    // One document id for the whole upload. Every chunk inherits it,
+    // so the document can be deleted/updated as a single unit no matter
+    // what the file is later renamed to.
+    const docId = randomUUID();
+
     const chunkObjects: Chunk[] = chunks.map((chunkText, i) => ({
       id: randomUUID(),
+      docId,
       text: chunkText,
       source: file.name,
       chunkIndex: i,
@@ -73,9 +86,24 @@ export async function POST(request: NextRequest) {
     // These vectors will be used for semantic/vector search
     const vectors = await embedTexts(chunks);
 
-    // Store the chunks in both search system
+    // Store the chunks in both search systems.
     // LanceDB: Vector/semantic search
     // MiniSearch: BM25/keyword search.
+    //
+    // If a document with the same file name was indexed before, find
+    // its docId(s) and remove those first, so re-uploading a file
+    // updates it (upsert) instead of duplicating chunks. We delete by
+    // docId (the canonical identity), not by file name, to avoid
+    // accidentally removing unrelated files that share a name.
+    const existingDocIds = (await getSources())
+      .filter((doc) => doc.source === file.name)
+      .map((doc) => doc.docId);
+
+    await Promise.all([
+      ...existingDocIds.map((docId) => deleteVectorByDocId(docId)),
+      ...existingDocIds.map((docId) => deleteIndexByDocId(docId)),
+    ]);
+
     await Promise.all([
       addChunks(chunkObjects, vectors),
       addChunksToIndex(chunkObjects),

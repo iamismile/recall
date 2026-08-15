@@ -39,7 +39,7 @@ function createIndex(): MiniSearch {
     idField: "id",
 
     // These fields will be available when we get search results.
-    storeFields: ["id", "text", "source", "chunkIndex"],
+    storeFields: ["id", "text", "source", "chunkIndex", "docId"],
 
     // Break text into individual words.
     tokenize: (text) => text.split(/[\s\-.,!?;:()"']+/),
@@ -144,12 +144,15 @@ export async function addChunksToIndex(chunks: IndexDocument[]): Promise<void> {
   // Keep only documents that haven't been indexed yet.
   const fresh = chunks
     .filter((c) => !existing.has(c.id))
-    .map(({ id, text, source, chunkIndex }): IndexDocument => ({
-      id,
-      text,
-      source,
-      chunkIndex,
-    }));
+    .map(
+      ({ id, docId, text, source, chunkIndex }): IndexDocument => ({
+        id,
+        docId,
+        text,
+        source,
+        chunkIndex,
+      }),
+    );
 
   if (fresh.length > 0) {
     // Add the new documents to the BM25 index.
@@ -202,4 +205,52 @@ export async function searchBM25(
 export async function getAllIndexedDocuments(): Promise<IndexDocument[]> {
   const { indexDocuments } = await ensureIndex();
   return indexDocuments;
+}
+
+/**
+ * Removes every chunk that belongs to the given document id.
+ *
+ * Canonical delete path: a docId uniquely identifies a single
+ * indexed document regardless of its file name.
+ */
+export async function deleteIndexByDocId(docId: string): Promise<void> {
+  const { mini, indexDocuments } = await ensureIndex();
+
+  const toRemove = indexDocuments.filter((d) => d.docId === docId);
+  if (toRemove.length === 0) return;
+
+  // removeAll expects the full document objects, not just IDs.
+  mini.removeAll(toRemove);
+
+  documents = indexDocuments.filter((d) => d.docId !== docId);
+  await persist(documents);
+}
+
+/**
+ * Returns the distinct documents currently indexed,
+ * along with how many chunks each one has.
+ *
+ * Identity is the document id (docId); the source file name is
+ * only used for display.
+ */
+export async function getSources(): Promise<
+  { docId: string; source: string; chunks: number }[]
+> {
+  const { indexDocuments } = await ensureIndex();
+
+  const counts = new Map<string, { source: string; chunks: number }>();
+  for (const doc of indexDocuments) {
+    const existing = counts.get(doc.docId);
+    if (existing) {
+      existing.chunks += 1;
+    } else {
+      counts.set(doc.docId, { source: doc.source, chunks: 1 });
+    }
+  }
+
+  return [...counts.entries()].map(([docId, { source, chunks }]) => ({
+    docId,
+    source,
+    chunks,
+  }));
 }

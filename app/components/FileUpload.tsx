@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 
-export default function FileUpload() {
+interface FileUploadProps {
+  onUploaded?: () => void;
+}
+
+export default function FileUpload({ onUploaded }: FileUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
 
@@ -25,6 +29,7 @@ export default function FileUpload() {
         setUploadStatus(
           `✅ ${data.fileName} indexed (${data.chunksIndexed} chunks)`,
         );
+        onUploaded?.();
       } else {
         setUploadStatus(`❌ ${data.error || "Upload failed"}`);
       }
