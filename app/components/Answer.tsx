@@ -10,52 +10,73 @@ interface AnswerProps {
 }
 
 // Minimal Tailwind styling for the rendered markdown so we don't need
-// an extra typography plugin.
+// an extra typography plugin. Each component only forwards the props it
+// needs (className/children/href) — we intentionally avoid spreading the
+// internal `node` prop onto DOM elements.
 const mdComponents = {
-  h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h1 className="text-xl font-bold mb-2" {...props} />
+  h1: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h1 className="text-xl font-bold mb-2">{children}</h1>
   ),
-  h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2 className="text-lg font-semibold mb-2" {...props} />
+  h2: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h2 className="text-lg font-semibold mb-2">{children}</h2>
   ),
-  h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h3 className="text-base font-semibold mb-1" {...props} />
+  h3: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h3 className="text-base font-semibold mb-1">{children}</h3>
   ),
-  p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
-    <p className="mb-2 leading-relaxed" {...props} />
+  p: ({ children }: React.HTMLAttributes<HTMLParagraphElement>) => (
+    <p className="mb-2 leading-relaxed">{children}</p>
   ),
-  ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
-    <ul className="list-disc pl-5 mb-2" {...props} />
+  ul: ({ children }: React.HTMLAttributes<HTMLUListElement>) => (
+    <ul className="list-disc pl-5 mb-2">{children}</ul>
   ),
-  ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
-    <ol className="list-decimal pl-5 mb-2" {...props} />
+  ol: ({ children }: React.HTMLAttributes<HTMLOListElement>) => (
+    <ol className="list-decimal pl-5 mb-2">{children}</ol>
   ),
-  li: (props: React.HTMLAttributes<HTMLLIElement>) => (
-    <li className="mb-1" {...props} />
+  li: ({ children }: React.HTMLAttributes<HTMLLIElement>) => (
+    <li className="mb-1">{children}</li>
   ),
-  a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+  a: ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
     <a
+      href={href}
       className="text-blue-600 underline"
       target="_blank"
       rel="noreferrer"
-      {...props}
-    />
+    >
+      {children}
+    </a>
   ),
-  strong: (props: React.HTMLAttributes<HTMLElement>) => (
-    <strong className="font-semibold" {...props} />
+  strong: ({ children }: React.HTMLAttributes<HTMLElement>) => (
+    <strong className="font-semibold">{children}</strong>
   ),
-  blockquote: (props: React.HTMLAttributes<HTMLQuoteElement>) => (
-    <blockquote
-      className="border-l-4 border-gray-300 pl-3 italic text-gray-600 mb-2"
-      {...props}
-    />
+  blockquote: ({ children }: React.HTMLAttributes<HTMLQuoteElement>) => (
+    <blockquote className="border-l-4 border-gray-300 pl-3 italic text-gray-600 mb-2">
+      {children}
+    </blockquote>
   ),
-  code: (props: React.HTMLAttributes<HTMLElement>) => (
-    <code className="bg-gray-100 px-1 py-0.5 rounded text-sm" {...props} />
+  // Fenced code blocks render as <pre><code>. The <pre> is the dark
+  // container; the <code> inside should be transparent so we don't get
+  // a nested background. We detect a block by the `language-*` class
+  // that react-markdown adds to fenced code.
+  pre: ({ children }: React.HTMLAttributes<HTMLPreElement>) => (
+    <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto mb-3 font-mono text-sm">
+      {children}
+    </pre>
   ),
-  pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
-    <pre className="bg-gray-100 p-3 rounded overflow-x-auto mb-2" {...props} />
-  ),
+  code: ({ className, children }: React.HTMLAttributes<HTMLElement>) => {
+    const isBlock = typeof className === "string" && /language-/.test(className);
+    if (isBlock) {
+      return (
+        <code className="bg-transparent p-0 text-gray-100 font-mono">
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code className="bg-gray-200 text-pink-600 px-1.5 py-0.5 rounded text-[0.85em] font-mono">
+        {children}
+      </code>
+    );
+  },
 };
 
 export default function Answer({ answer, isLoading, error }: AnswerProps) {
