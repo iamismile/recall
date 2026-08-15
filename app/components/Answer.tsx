@@ -9,6 +9,24 @@ interface AnswerProps {
   error: string | null;
 }
 
+// Turns plain "[1]", "[2]" citation markers in the model's answer into
+// markdown links ([1](#ref-1)) so they become clickable. The matching
+// source chunk in the Results list carries id="ref-1", etc.
+function linkifyCitations(text: string): string {
+  return text.replace(/\[(\d+)\]/g, (_m, n) => `[${n}](#ref-${n})`);
+}
+
+// Scrolls to the referenced source chunk and briefly highlights it.
+function scrollToSource(refId: string) {
+  const el = document.getElementById(refId);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("ring-2", "ring-blue-400", "bg-blue-50");
+  window.setTimeout(() => {
+    el.classList.remove("ring-2", "ring-blue-400", "bg-blue-50");
+  }, 1600);
+}
+
 // Minimal Tailwind styling for the rendered markdown so we don't need
 // an extra typography plugin. Each component only forwards the props it
 // needs (className/children/href) — we intentionally avoid spreading the
@@ -35,16 +53,36 @@ const mdComponents = {
   li: ({ children }: React.HTMLAttributes<HTMLLIElement>) => (
     <li className="mb-1">{children}</li>
   ),
-  a: ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a
-      href={href}
-      className="text-blue-600 underline"
-      target="_blank"
-      rel="noreferrer"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    // Citation links ([1] -> #ref-1): scroll to the source chunk and
+    // render a clean [n] badge instead of the raw link text.
+    if (href && href.startsWith("#ref-")) {
+      const n = href.slice("#ref-".length);
+      return (
+        <a
+          href={href}
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToSource(href.slice(1));
+          }}
+          title={`Jump to source ${n}`}
+          className="text-blue-600 no-underline cursor-pointer font-semibold hover:text-blue-800"
+        >
+          [{n}]
+        </a>
+      );
+    }
+    return (
+      <a
+        href={href}
+        className="text-blue-600 underline"
+        target="_blank"
+        rel="noreferrer"
+      >
+        {children}
+      </a>
+    );
+  },
   strong: ({ children }: React.HTMLAttributes<HTMLElement>) => (
     <strong className="font-semibold">{children}</strong>
   ),
@@ -111,8 +149,11 @@ export default function Answer({ answer, isLoading, error }: AnswerProps) {
         )}
       </h2>
       <div className="text-gray-800 text-sm">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-          {answer}
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={mdComponents}
+        >
+          {linkifyCitations(answer)}
         </ReactMarkdown>
         {isLoading && (
           <span className="inline-block w-2 h-4 bg-blue-500 align-middle animate-pulse" />

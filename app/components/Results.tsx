@@ -12,7 +12,11 @@ export default function Results({ results }: ResultsProps) {
   return (
     <div className="space-y-4">
       {results.map((result, idx) => (
-        <div key={idx} className="p-4 bg-white rounded-lg shadow">
+        <div
+          id={`ref-${idx + 1}`}
+          key={idx}
+          className="p-4 bg-white rounded-lg shadow scroll-mt-4 transition-all duration-500"
+        >
           <p className="text-sm text-gray-500 mb-2">
             <span className="font-semibold text-blue-700">[{idx + 1}]</span>
             <span className="mx-1">·</span>
