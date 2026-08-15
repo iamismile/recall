@@ -4,11 +4,14 @@ import { useState } from "react";
 import FileUpload from "@/app/components/FileUpload";
 import SearchBar from "@/app/components/SearchBar";
 import Results from "@/app/components/Results";
+import Answer from "@/app/components/Answer";
 import DocumentManager from "@/app/components/DocumentManager";
 import { SearchResult } from "@/app/lib/types";
 
 export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [answerError, setAnswerError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [docsVersion, setDocsVersion] = useState(0);
@@ -16,6 +19,8 @@ export default function Home() {
   const handleSearch = async (query: string) => {
     setIsLoading(true);
     setMessage("");
+    setAnswer(null);
+    setAnswerError(null);
     try {
       const res = await fetch("/api/search", {
         method: "POST",
@@ -25,6 +30,8 @@ export default function Home() {
       const data = await res.json();
       if (res.ok) {
         setResults(data.results);
+        setAnswer(data.answer ?? null);
+        setAnswerError(data.answerError ?? null);
         if (data.results.length === 0) {
           setMessage("No results found. Upload some documents first.");
         }
@@ -50,6 +57,7 @@ export default function Home() {
       />
       <SearchBar onSearch={handleSearch} isLoading={isLoading} />
       {message && <p className="text-center mt-4 text-red-500">{message}</p>}
+      <Answer answer={answer} isLoading={isLoading} error={answerError} />
       <Results results={results} />
     </main>
   );

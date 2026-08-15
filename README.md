@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Recall — Local-First RAG Memory
+
+**Recall** is a personal semantic memory app: upload your documents (`.txt`, `.md`, `.pdf`), then ask questions in natural language. It retrieves the most relevant passages and uses an LLM to generate a grounded answer with citations.
+
+Built to demonstrate an end-to-end **Retrieval-Augmented Generation (RAG)** pipeline with a **local-first** design — embeddings and search run entirely on your machine; only the final answer generation calls an external model.
+
+## Architecture
+
+```
+Upload ─▶ Parse ─▶ Chunk ─▶ Embed (on-device) ─▶ Store
+                                                    ├─ LanceDB   (vector / semantic)
+                                                    └─ MiniSearch (BM25 / keyword)
+                                                         │
+Query ─▶ Embed (on-device) ─▶ Hybrid search (RRF) ─▶ Gemini ─▶ Grounded answer + citations
+```
+
+| Stage | Technology | What it does |
+|-------|------------|--------------|
+| Ingestion | `pdf-parse` | Extract text from PDF / TXT / MD |
+| Chunking | custom `chunker.ts` | Overlapping word windows |
+| Embeddings | `@huggingface/transformers` (MiniLM) | On-device vectors, no API |
+| Vector store | `@lancedb/lancedb` | Semantic similarity search |
+| Keyword store | `minisearch` | BM25 lexical search |
+| Fusion | Reciprocal Rank Fusion (`search.ts`) | Merges both result lists |
+| Generation | Gemini API — Google GenAI SDK (`generate.ts`) | Grounded answer + `[n]` citations |
+
+## Why hybrid search + RRF?
+
+Vector search finds meaning; BM25 finds exact keywords. Their raw scores
+aren't comparable, so we rank each list and fuse with
+`RRF = 1 / (k + rank)` (k = 60). This beats either method alone and is
+robust to queries that are either semantic or lexical.
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Create your env file and add a Gemini API key:
+   ```bash
+   cp .env.example .env.local
+   # edit .env.local and set GEMINI_API_KEY
+   ```
+   Get a key at https://aistudio.google.com/app/apikey
+   Uses the Google GenAI SDK (`@google/genai`); default model `gemini-2.5-flash`.
+3. Run the dev server:
+   ```bash
+   npm run dev
+   ```
+4. Open http://localhost:3000, upload a document, and ask a question.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## API
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- `POST /api/upload` — upload a file (form-data `file`). Upserts by filename.
+- `POST /api/search` — `{ query }` → `{ results, answer, answerError }`.
+- `GET  /api/documents` — list indexed documents (`docId`, source, chunks).
+- `DELETE /api/documents?docId=…` — delete a document and all its chunks.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Notes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Documents are identified by a `docId` (not filename) so updates/deletes are
+  collision-free.
+- Indexes persist locally in `data/`; embedding models cache in `.cache/`.
+- Generation requires `GEMINI_API_KEY`; retrieval works fully offline.
