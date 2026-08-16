@@ -170,7 +170,7 @@ The top ~20 fused candidates are re-scored by a **cross-encoder**: a model that 
 The reranker is **pluggable**:
 
 - `RERANK_PROVIDER=local` (default) — runs `Xenova/ms-marco-MiniLM-L-6-v2` on-device via transformers.js. No external calls; privacy-first. Loads on first query, then cached in `.cache/`.
-- `RERANK_PROVIDER=jina` — calls the **Jina Reranker API** instead, so no heavy model is loaded into our own process (ideal for serverless or memory-constrained hosts). Requires `JINA_API_KEY`.
+- `RERANK_PROVIDER=jina` — calls the **Jina Reranker API** instead, so no heavy model is loaded into our own process (ideal for serverless or memory-constrained hosts). Requires `JINA_RERANKING_API_KEY`.
 
 > If reranking fails (e.g. model load error), `app/api/search/route.ts` falls back to the RRF ranking so search still works.
 
@@ -241,7 +241,7 @@ All options live in `.env` (see `.env.example`):
 | `GEMINI_API_KEY` | — | Required for answer generation. Retrieval works without it. |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Override the generation model. |
 | `RERANK_PROVIDER` | `local` | `local` (on-device cross-encoder) or `jina` (API). |
-| `JINA_API_KEY` | — | Required only when `RERANK_PROVIDER=jina`. |
+| `JINA_RERANKING_API_KEY` | — | Required only when `RERANK_PROVIDER=jina`. |
 | `JINA_RERANK_MODEL` | `jina-reranker-v2-base-multilingual` | Jina model to use. |
 
 ## API

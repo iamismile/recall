@@ -1,22 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
-import { extractTextFromFile } from "@/app/lib/parsers";
 import { chunkText } from "@/app/lib/chunker";
 import { embedTexts } from "@/app/lib/embeddings";
-import {
-  addChunks,
-  deleteByDocId as deleteVectorByDocId,
-} from "@/app/lib/vectordb";
 import {
   addChunksToIndex,
   deleteIndexByDocId,
   getSources,
 } from "@/app/lib/minisearch";
+import { extractTextFromFile } from "@/app/lib/parsers";
 import { Chunk } from "@/app/lib/types";
+import {
+  addChunks,
+  deleteByDocId as deleteVectorByDocId,
+} from "@/app/lib/vectordb";
+import { randomUUID } from "crypto";
+import fs from "fs/promises";
+import { NextRequest, NextResponse } from "next/server";
+import path from "path";
 
 export async function POST(request: NextRequest) {
+  let tempFilePath: string | null = null;
+
   try {
     // Get the uploaded file from the form data.
     const formData = await request.formData();
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
     await fs.mkdir(tempDir, { recursive: true });
 
     // Generate a unique temporary file name.
-    const tempFilePath = path.join(tempDir, `${randomUUID()}${fileExt}`);
+    tempFilePath = path.join(tempDir, `${randomUUID()}${fileExt}`);
 
     // Convert the uploaded file into a Buffer and save it
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -60,13 +62,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    /**
-     * Split the document into smaller pieces.
-     *
-     * We don't embed the entire document as one vector.
-     * Instead, we create smaller chunks so search can find
-     * the specific part of the document that is relevant.
-     */
+    // Split the document into smaller pieces.
     const chunks = chunkText(text);
 
     // One document id for the whole upload. Every chunk inherits it,
@@ -86,31 +82,27 @@ export async function POST(request: NextRequest) {
     // These vectors will be used for semantic/vector search
     const vectors = await embedTexts(chunks);
 
-    // Store the chunks in both search systems.
-    // LanceDB: Vector/semantic search
-    // MiniSearch: BM25/keyword search.
-    //
     // If a document with the same file name was indexed before, find
-    // its docId(s) and remove those first, so re-uploading a file
-    // updates it (upsert) instead of duplicating chunks. We delete by
-    // docId (the canonical identity), not by file name, to avoid
-    // accidentally removing unrelated files that share a name.
+    // its docId(s) and remove those first
     const existingDocIds = (await getSources())
       .filter((doc) => doc.source === file.name)
       .map((doc) => doc.docId);
 
-    await Promise.all([
-      ...existingDocIds.map((docId) => deleteVectorByDocId(docId)),
-      ...existingDocIds.map((docId) => deleteIndexByDocId(docId)),
-    ]);
+    // Only delete if there are existing documents
+    if (existingDocIds.length > 0) {
+      await Promise.all([
+        deleteVectorByDocId(existingDocIds[0]),
+        deleteIndexByDocId(existingDocIds[0]),
+      ]);
+    }
 
+    // Store the chunks in both search systems.
+    // LanceDB: Vector/semantic search
+    // MiniSearch: BM25/keyword search.
     await Promise.all([
       addChunks(chunkObjects, vectors),
       addChunksToIndex(chunkObjects),
     ]);
-
-    // The temporary file is no longer needed, so remove it
-    await fs.unlink(tempFilePath);
 
     return NextResponse.json({
       success: true,
@@ -123,5 +115,13 @@ export async function POST(request: NextRequest) {
       { error: "Internal server error" },
       { status: 500 },
     );
+  } finally {
+    if (tempFilePath) {
+      try {
+        await fs.unlink(tempFilePath);
+      } catch (error) {
+        console.error("Failed to remove temporary file:", error);
+      }
+    }
   }
 }
