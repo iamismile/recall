@@ -36,6 +36,7 @@ Answer the user's question using ONLY the context provided below.
 
 Rules:
 - Cite the supporting context inline using its marker number, e.g. [1] or [2].
+- If a claim is supported by multiple sources, cite each one separately like [1][2] - never combine them into a single bracket like [1, 2].
 - If the answer is not contained in the context, reply exactly: "I don't have that information in your documents."
 - Do not use any knowledge outside the provided context.
 - Be concise.

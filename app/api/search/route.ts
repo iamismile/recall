@@ -1,7 +1,13 @@
 import { embedTexts } from "@/app/lib/embeddings";
 import { streamAnswer } from "@/app/lib/generate";
 import { searchHybrid } from "@/app/lib/search";
+import { rerankChunks } from "@/app/lib/rerank";
 import { NextRequest, NextResponse } from "next/server";
+
+// How many candidates to pull from hybrid search before reranking.
+const RERANK_CANDIDATES = 20;
+// How many to keep after reranking.
+const FINAL_TOP_K = 5;
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +27,26 @@ export async function POST(request: NextRequest) {
     // BM25: Finds chunks containing relevant keywords.
     // RRF:  Combines the rankings from both search methods.
     // We retrieve the top 5 final results
-    const results = await searchHybrid(query, queryVector, 5);
+    const candidates = await searchHybrid(
+      query,
+      queryVector,
+      RERANK_CANDIDATES,
+    );
+
+    // Re-rank the hybrid search candidates using a cross-encoder.
+    //
+    // The cross-encoder looks at the query and each candidate
+    // together and produces a more precise relevance score.
+    //
+    // If reranking fails, fall back to the RRF ranking so the
+    // search can still return useful results.
+    let results;
+    try {
+      results = await rerankChunks(query, candidates, FINAL_TOP_K);
+    } catch (rerankErr) {
+      console.error("Rerank error, falling back to hybrid ranking:", rerankErr);
+      results = candidates.slice(0, FINAL_TOP_K);
+    }
 
     // Create a Server-Sent Events (SSE) stream.
     // Client will receives:
