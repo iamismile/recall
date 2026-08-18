@@ -15,8 +15,22 @@ let embedder: FeatureExtractionPipeline | null = null;
 /**
  * Loads and returns the embedding model.
  *
+ * Model:
+ * - Xenova/all-MiniLM-L6-v2
+ * - A lightweight Transformer-based sentence embedding model.
+ * - Produces a 384-dimensional vector for each input text.
+ * - Designed to capture the semantic meaning of text rather than
+ *   simply matching exact words.
+ *
+ * Limitations:
+ * - Maximum input length: 256 tokens
+ * - In typical English text, 256 tokens is often around 180–200 words,
+ *   but this varies depending on the text.
+ * - Text longer than this will be truncated silently
+ *
  * The model is loaded only once and then reused for subsequent requests.
- * This is important because loading an ML model is an expensive operation.
+ * Loading an ML model is expensive, so keeping the instance in memory
+ * avoids paying that cost for every embedding request.
  */
 export async function getEmbedder() {
   if (!embedder) {
@@ -28,17 +42,42 @@ export async function getEmbedder() {
 /**
  * Converts an array of text strings into numerical vector embeddings.
  *
- * Each text is transformed into a vector that represents its semantic meaning.
+ * Each text is transformed into a 384-dimensional vector that represents
+ * its semantic meaning.
  *
- * pooling: "mean"
- * - Combines all word/token vectors into one vector for the whole text.
+ * `pooling: "mean"`
+ * - The Transformer produces a vector for each token.
+ * - Mean pooling combines those token vectors into one vector
+ *   representing the entire text.
  *
- * normalize: true
- * - Makes all vectors the same length.
- * - This makes it easier to compare how similar two texts are.
+ * `normalize: true`
+ * - Changes each vector so that its length becomes 1 applying L2 normalization (Euclidean norm)
+ * - It does not change the direction of the vector.
+ * - This makes vectors easier to compare when searching for
+ *   texts with similar meanings.
  */
 export async function embedTexts(texts: string[]): Promise<number[][]> {
-  const model = await getEmbedder();
-  const output = await model(texts, { pooling: "mean", normalize: true });
-  return output.tolist() as unknown as number[][];
+  if (!texts.length) {
+    throw new Error("Input texts array cannot be empty");
+  }
+
+  if (texts.some((text) => !text.trim())) {
+    throw new Error("Input texts cannot contain empty strings");
+  }
+
+  try {
+    const model = await getEmbedder();
+    const output = await model(texts, { pooling: "mean", normalize: true });
+    return output.tolist() as unknown as number[][];
+  } catch (error) {
+    console.error("Failed to embed texts:", error);
+
+    // Type guard to check if error has message property
+    if (error instanceof Error) {
+      throw new Error(`Embedding failed: ${error.message}`);
+    }
+
+    // Handle non-Error objects
+    throw new Error(`Embedding failed: ${String(error)}`);
+  }
 }
