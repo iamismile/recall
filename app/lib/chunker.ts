@@ -9,23 +9,25 @@
  *
  * `chunkSize`
  * - Maximum number of words in each chunk.
+ * - Default: 180 words.
  *
  * `overlap`
  * - Number of words shared between consecutive chunks.
+ * - Default: 20 words.
  * - Helps preserve context between chunks.
  *
  * Example:
  *
- * chunkSize = 200
+ * chunkSize = 180
  * overlap = 20
  *
- * Chunk 1 → words 0-199
- * Chunk 2 → words 180-379
- * Chunk 3 → words 360-559
+ * Chunk 1 → words 0-179
+ * Chunk 2 → words 160-339
+ * Chunk 3 → words 320-499
  */
 export function chunkText(
   text: string,
-  chunkSize = 200,
+  chunkSize = 180,
   overlap = 20,
 ): string[] {
   if (!text.trim()) {
