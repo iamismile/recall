@@ -1,4 +1,5 @@
 import { chunkText } from "@/app/lib/chunker";
+import { MAX_UPLOAD_SIZE } from "@/app/lib/config";
 import { embedTexts } from "@/app/lib/embeddings";
 import {
   addChunksToIndex,
@@ -35,6 +36,15 @@ export async function POST(request: NextRequest) {
     if (!allowedExts.includes(fileExt)) {
       return NextResponse.json(
         { error: "Only .txt, .md, and .pdf files are supported" },
+        { status: 400 },
+      );
+    }
+
+    if (file.size > MAX_UPLOAD_SIZE) {
+      return NextResponse.json(
+        {
+          error: `File too large. Maximum size is ${MAX_UPLOAD_SIZE / (1024 * 1024)} MB`,
+        },
         { status: 400 },
       );
     }

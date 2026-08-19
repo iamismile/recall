@@ -8,3 +8,6 @@ export const FINAL_TOP_K = 5;
 // Kept equal to RERANK_CANDIDATES so neither method truncates the
 // candidate pool below the rerank window.
 export const CANDIDATES = RERANK_CANDIDATES;
+
+// Maximum upload file size in bytes (10 MB).
+export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
