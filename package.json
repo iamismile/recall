@@ -6,12 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "eval": "tsx scripts/evaluate.ts"
   },
   "dependencies": {
     "@google/genai": "^2.17.1",
     "@huggingface/transformers": "^4.2.0",
     "@lancedb/lancedb": "^0.37.1",
+    "dotenv": "^17.4.2",
     "minisearch": "^7.2.0",
     "next": "16.3.0",
     "pdf-parse": "^2.4.5",
@@ -28,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }

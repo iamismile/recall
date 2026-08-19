@@ -1,0 +1,17 @@
+{"query": "How do I reset my password?", "expectedSnippet": "To reset your password, visit the account settings page and click \"Forgot password\""}
+{"query": "What does error code 0x7F3A mean?", "expectedSnippet": "ErrorCode 0x7F3A indicates the GPU driver crashed during inference"}
+{"query": "How are documents split into chunks?", "expectedSnippet": "Documents are split into overlapping chunks of 200 words with 20 words of overlap"}
+{"query": "Which model generates the answers?", "expectedSnippet": "default generation model is gemini-2.5-flash"}
+{"query": "How long do the auth tokens last?", "expectedSnippet": "JWT tokens that expire after 15 minutes"}
+{"query": "How does the app combine semantic and keyword search?", "expectedSnippet": "Hybrid search combines a vector store (LanceDB) for semantic matching with a BM25 index (MiniSearch) for exact keyword matching"}
+{"query": "Why are citations shown in the answer?", "expectedSnippet": "grounding is what makes the system trustworthy instead of a guessing machine"}
+{"query": "Which file types can I upload?", "expectedSnippet": "Supported file types are plain text, Markdown, and PDF"}
+{"query": "How do I avoid loading the reranker model on my own machine?", "expectedSnippet": "RERANK_PROVIDER=jina to call the Jina Reranker API instead"}
+{"query": "Where are the search indexes stored on disk?", "expectedSnippet": "The vector store lives in data/lancedb and the BM25 index lives in data/minisearch.json"}
+{"query": "What env var selects a different Gemini model?", "expectedSnippet": "GEMINI_MODEL environment variable to use a different Gemini release"}
+{"query": "What API key is required to run Recall?", "expectedSnippet": "only required key is GEMINI_API_KEY"}
+{"query": "Why is my first search so slow?", "expectedSnippet": "slow first query is normal"}
+{"query": "What happens if the reranker fails?", "expectedSnippet": "reranking fails, the server logs the error and falls back to the RRF ranking"}
+{"query": "The vector store and keyword index are out of sync, how do I fix it?", "expectedSnippet": "delete the document and re-upload it"}
+{"query": "What if answer generation fails?", "expectedSnippet": "Generation errors are streamed to the client as an error event"}
+{"query": "How do I fix out-of-memory errors while indexing?", "expectedSnippet": "index fewer or smaller documents at a time"}

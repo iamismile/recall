@@ -184,7 +184,6 @@ async function rerankViaJina(
   chunks: SearchResult[],
   topN: number,
 ): Promise<SearchResult[]> {
-  console.log("USING JINA");
   const apiKey = process.env.JINA_RERANKING_API_KEY;
   if (!apiKey) {
     throw new Error("JINA_RERANKING_API_KEY environment variable is not set");

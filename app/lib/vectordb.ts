@@ -106,6 +106,7 @@ export async function searchSimilar(
   // Convert LanceDB's result format into our application's format.
   return results.map((row) => ({
     id: row.id,
+    docId: row.docId,
     text: row.text,
     source: row.source,
     chunkIndex: row.chunkIndex ?? 0,

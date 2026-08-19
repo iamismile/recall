@@ -8,6 +8,7 @@ export interface Chunk {
 
 export interface SearchResult {
   id: string;
+  docId: string;
   text: string;
   source: string;
   chunkIndex: number;

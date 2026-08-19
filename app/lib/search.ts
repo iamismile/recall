@@ -49,9 +49,10 @@ export async function searchHybrid(
   topK = 5,
 ): Promise<SearchResult[]> {
   // Run both searches at the same time.
+  const fetchSize = Math.max(CANDIDATES, topK);
   const [vectorResults, bm25Results] = await Promise.all([
-    searchSimilar(queryVector, CANDIDATES),
-    searchBM25(query, CANDIDATES),
+    searchSimilar(queryVector, fetchSize),
+    searchBM25(query, fetchSize),
   ]);
 
   // Store the combined RRF score for each document.
@@ -72,9 +73,8 @@ export async function searchHybrid(
    * index 2 -> rank 3
    */
   vectorResults.forEach((result, index) => {
-    const rank = index + 1;
-
     // Higher-ranked results get a larger RRF contribution.
+    const rank = index + 1;
     const rrfScore = 1 / (RRF_K + rank);
 
     // If this document already has a score from another search,
@@ -93,7 +93,6 @@ export async function searchHybrid(
    */
   bm25Results.forEach((result, index) => {
     const rank = index + 1;
-
     const rrfScore = 1 / (RRF_K + rank);
 
     scores.set(result.id, (scores.get(result.id) ?? 0) + rrfScore);

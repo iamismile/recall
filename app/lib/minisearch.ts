@@ -190,13 +190,22 @@ export async function searchBM25(
   const hits = mini.search(query, { prefix: true, fuzzy: 0.2 });
 
   // Return only the best matching results.
-  return hits.slice(0, topK).map((hit) => ({
-    id: String(hit.id),
-    text: hit.text,
-    source: hit.source,
-    chunkIndex: (hit as unknown as { chunkIndex?: number }).chunkIndex ?? 0,
-    score: hit.score,
-  }));
+  return hits.slice(0, topK).map((hit) => {
+    // docId should always be present
+    const docId = (hit as unknown as { docId?: string }).docId;
+    if (!docId) {
+      throw new Error(`BM25 hit ${hit.id} is missing docId`);
+    }
+
+    return {
+      id: String(hit.id),
+      docId,
+      text: hit.text,
+      source: hit.source,
+      chunkIndex: (hit as unknown as { chunkIndex?: number }).chunkIndex ?? 0,
+      score: hit.score,
+    };
+  });
 }
 
 /**
