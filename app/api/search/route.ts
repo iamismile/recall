@@ -82,10 +82,10 @@ export async function POST(request: NextRequest) {
           send("done", {});
         } catch (err) {
           // Send generation errors to the client.
-          send(
-            "error",
-            err instanceof Error ? err.message : "Failed to generate answer",
-          );
+          send("error", {
+            message:
+              err instanceof Error ? err.message : "Failed to generate answer",
+          });
         } finally {
           // Close the SSE connection.
           controller.close();
