@@ -63,6 +63,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { chunkText } from "@/app/lib/chunker";
+import { FINAL_TOP_K, RERANK_CANDIDATES } from "@/app/lib/config";
 import { embedTexts } from "@/app/lib/embeddings";
 import { addChunksToIndex, deleteIndexByDocId } from "@/app/lib/minisearch";
 import { rerankChunks } from "@/app/lib/rerank";
@@ -73,9 +74,6 @@ import {
   deleteByDocId as deleteVectorByDocId,
   getSources as getVectorSources,
 } from "@/app/lib/vectordb";
-
-const RERANK_CANDIDATES = 20;
-const FINAL_TOP_K = 5;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EVAL_DIR = path.join(__dirname, "..", "eval");
@@ -417,20 +415,19 @@ async function evaluate(evalDocIds: Set<string>): Promise<void> {
     );
 
     // Stage 2: Cross-encoder reranking.
-    // The reranker receives the top RRF candidates and produces
-    // the final top-K ranking.
-    const reranked = await rerankChunks(item.query, candidates, FINAL_TOP_K);
+    // The reranker receives every RRF candidate and re-scores them,
+    // producing a full re-ordered ranking
+    const reranked = await rerankChunks(
+      item.query,
+      candidates,
+      candidates.length,
+    );
 
     // Evaluate the reranked results.
     const rerankRels = relevanceArray(
       reranked.map((c) => c.text),
       item.expectedSnippet,
     );
-
-    // Compare the actual chunk ordering before and after reranking.
-    const rrfTopK = rrfRels.slice(0, FINAL_TOP_K);
-    const rankingChanged =
-      JSON.stringify(rrfTopK) !== JSON.stringify(rerankRels);
 
     // Accumulate Recall@K and nDCG@K for both retrieval stages.
     for (const k of ks) {
@@ -452,15 +449,16 @@ async function evaluate(evalDocIds: Set<string>): Promise<void> {
     const hit = rerankRels.slice(0, FINAL_TOP_K).some((r) => r > 0);
     console.log(`  ${hit ? "✓" : "✗"}  ${item.query}`);
 
-    // Check whether the cross-encoder changed the ordering
-    // of the top-K candidate chunks.
-    if (rankingChanged) {
-      console.log(`    ⚠ rerank changed ranking`);
-      const rrfLabel = `RRF (top ${FINAL_TOP_K})`.padEnd(16);
-      const rerankLabel = "Reranked".padEnd(16);
-      console.log(`      ${rrfLabel}  ${rrfTopK}`);
-      console.log(`      ${rerankLabel}  ${rerankRels}`);
-    }
+    // Show where the first relevant chunk sits in each FULL ranking
+    // (1-based). This makes it obvious when a query is a miss because
+    // the gold chunk ranks beyond the top-5 window rather than being
+    // absent, and whether reranking moved it up or down.
+    const rrfGoldRank = rrfRels.indexOf(1) + 1;
+    const rerankGoldRank = rerankRels.indexOf(1) + 1;
+    const fmtRank = (r: number) => (r > 0 ? `#${r}` : "not retrieved");
+    console.log(
+      `    gold: RRF ${fmtRank(rrfGoldRank)} -> rerank ${fmtRank(rerankGoldRank)}`,
+    );
   }
 
   /**

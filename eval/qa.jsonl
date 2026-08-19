@@ -15,3 +15,32 @@
 {"query": "The vector store and keyword index are out of sync, how do I fix it?", "expectedSnippet": "delete the document and re-upload it"}
 {"query": "What if answer generation fails?", "expectedSnippet": "Generation errors are streamed to the client as an error event"}
 {"query": "How do I fix out-of-memory errors while indexing?", "expectedSnippet": "index fewer or smaller documents at a time"}
+{"query": "Are my documents uploaded to third-party servers?", "expectedSnippet": "Recall is local-first: your documents are never uploaded to any third-party server"}
+{"query": "What gets sent to the Gemini API?", "expectedSnippet": "Only the final prompt is transmitted to the Gemini API, never your raw documents"}
+{"query": "Where are the model weights stored?", "expectedSnippet": "Model weights are cached in the .cache directory and stay on your machine"}
+{"query": "Does Recall collect telemetry?", "expectedSnippet": "Telemetry is off by default and no usage data leaves the device"}
+{"query": "What does the /api/search endpoint return?", "expectedSnippet": "POST /api/search streams Server-Sent Events containing sources, token, error, and done events"}
+{"query": "How do I upload a file via the API?", "expectedSnippet": "The upload route accepts a single multipart field named file"}
+{"query": "How do I delete a document through the API?", "expectedSnippet": "DELETE /api/documents expects a docId query parameter and removes all of its chunks"}
+{"query": "How can I list all indexed documents?", "expectedSnippet": "GET /api/documents lists every indexed document with its chunk count"}
+{"query": "What is the keyboard shortcut to focus search?", "expectedSnippet": "Cmd or Ctrl plus K focuses the search bar from anywhere in the app"}
+{"query": "What shortcut opens the upload dialog?", "expectedSnippet": "Cmd or Ctrl plus U opens the file picker to upload a document"}
+{"query": "Can I navigate citations with the keyboard?", "expectedSnippet": "Arrow keys move the focus between the cited source chunks"}
+{"query": "When was reranking introduced?", "expectedSnippet": "Version 1.4 added cross-encoder reranking after hybrid retrieval"}
+{"query": "When did streaming answers get added?", "expectedSnippet": "Version 1.2 shipped streaming answers with inline citations"}
+{"query": "What was in version 1.0?", "expectedSnippet": "Version 1.0 launched the local vector and BM25 hybrid search"}
+{"query": "How many dimensions are the embeddings?", "expectedSnippet": "The embedding model Xenova/all-MiniLM-L6-v2 outputs 384-dimensional vectors"}
+{"query": "Which reranker model runs locally?", "expectedSnippet": "The reranker Xenova/ms-marco-MiniLM-L-6-v2 is a cross-encoder trained on MS MARCO"}
+{"query": "Why are the embeddings normalized?", "expectedSnippet": "Vectors are L2-normalized so cosine similarity equals the dot product"}
+{"query": "Can a team share one index?", "expectedSnippet": "Enterprise deployments can use a shared LanceDB object store for the index"}
+{"query": "Who is allowed to delete documents?", "expectedSnippet": "Role-based access control restricts who may delete documents"}
+{"query": "Is there an audit log of changes?", "expectedSnippet": "Audit logs capture every upload and deletion with a timestamp"}
+{"query": "Is there a Recall mobile app?", "expectedSnippet": "The mobile app mirrors the desktop index over the local network"}
+{"query": "Is mobile sync encrypted?", "expectedSnippet": "Mobile sync is protected by end-to-end encryption with a per-device key"}
+{"query": "Should I use smaller chunks?", "expectedSnippet": "Lowering the chunk size improves retrieval precision at the cost of context"}
+{"query": "How do I use GPU memory efficiently when embedding?", "expectedSnippet": "Batch embedding several chunks together uses GPU memory more efficiently"}
+{"query": "What does the RRF_K parameter do?", "expectedSnippet": "Increasing RRF_K makes the fused ranking depend more on high-rank agreement"}
+{"query": "What is the dimensionality of the sentence embedding vectors?", "expectedSnippet": "The embedding model Xenova/all-MiniLM-L6-v2 outputs 384-dimensional vectors"}
+{"query": "My GPU ran out of memory, which error code is that?", "expectedSnippet": "ErrorCode 0x7F3B, means the model ran out of VRAM"}
+{"query": "Can I run Recall without any internet connection at all?", "expectedSnippet": "Recall supports an air-gapped mode where the generation step is removed entirely"}
+{"query": "How do I pre-warm the models so the first search is fast?", "expectedSnippet": "You can pre-warm the models by issuing a dummy query at server start"}

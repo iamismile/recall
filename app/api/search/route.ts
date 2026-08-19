@@ -2,12 +2,8 @@ import { embedTexts } from "@/app/lib/embeddings";
 import { streamAnswer } from "@/app/lib/generate";
 import { searchHybrid } from "@/app/lib/search";
 import { rerankChunks } from "@/app/lib/rerank";
+import { RERANK_CANDIDATES, FINAL_TOP_K } from "@/app/lib/config";
 import { NextRequest, NextResponse } from "next/server";
-
-// How many candidates to pull from hybrid search before reranking.
-const RERANK_CANDIDATES = 20;
-// How many to keep after reranking.
-const FINAL_TOP_K = 5;
 
 export async function POST(request: NextRequest) {
   try {

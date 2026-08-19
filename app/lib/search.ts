@@ -1,3 +1,4 @@
+import { CANDIDATES } from "./config";
 import { searchBM25 } from "./minisearch";
 import { SearchResult } from "./types";
 import { searchSimilar } from "./vectordb";
@@ -37,8 +38,7 @@ import { searchSimilar } from "./vectordb";
 const RRF_K = 60;
 
 // Fetch extra results from each search method before combining them.
-// This gives RRF more candidates to work with.
-const CANDIDATES = 20;
+// This gives RRF more candidates to work with (cap imported from config).
 
 /**
  * Performs hybrid search using Vector Search + BM25 + RRF.
