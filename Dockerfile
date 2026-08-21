@@ -13,7 +13,9 @@ RUN npm run build
 ARG WARM_EMBEDDINGS=false
 ARG WARM_RERANKER=false
 ENV WARM_EMBEDDINGS=${WARM_EMBEDDINGS} WARM_RERANKER=${WARM_RERANKER}
-RUN node scripts/warm-models.mjs
+# Always create .cache so the COPY below succeeds even when
+# no models were baked in (API-only providers).
+RUN mkdir -p .cache && node scripts/warm-models.mjs
 
 FROM node:20-slim
 WORKDIR /app
