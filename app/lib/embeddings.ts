@@ -39,11 +39,20 @@ export async function getEmbedder() {
   return embedder;
 }
 
+// Number of texts embedded per model forward pass.
+// The pipeline pads the whole input array into a single tensor,
+// so embedding a large document in one call spikes memory
+// Small batches keep peak memory flat.
+const EMBED_BATCH_SIZE = 32;
+
 /**
  * Converts an array of text strings into numerical vector embeddings.
  *
  * Each text is transformed into a 384-dimensional vector that represents
  * its semantic meaning.
+ *
+ * Texts are processed in fixed-size batches so memory usage stays
+ * constant regardless of how many texts are passed in.
  *
  * `pooling: "mean"`
  * - The Transformer produces a vector for each token.
@@ -67,8 +76,13 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
 
   try {
     const model = await getEmbedder();
-    const output = await model(texts, { pooling: "mean", normalize: true });
-    return output.tolist() as unknown as number[][];
+    const vectors: number[][] = [];
+    for (let i = 0; i < texts.length; i += EMBED_BATCH_SIZE) {
+      const batch = texts.slice(i, i + EMBED_BATCH_SIZE);
+      const output = await model(batch, { pooling: "mean", normalize: true });
+      vectors.push(...(output.tolist() as unknown as number[][]));
+    }
+    return vectors;
   } catch (error) {
     console.error("Failed to embed texts:", error);
 
