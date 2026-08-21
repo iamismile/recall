@@ -1,0 +1,17 @@
+services:
+  recall:
+    build:
+      context: .
+      args:
+        WARM_RERANKER: "false"
+    image: recall
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./data:/app/data
+      - ./.cache:/app/.cache
+    restart: unless-stopped

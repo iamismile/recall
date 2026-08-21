@@ -1,0 +1,9 @@
+node_modules
+.next
+.cache
+data
+tmp
+.env
+.git
+*.md
+tsconfig.tsbuildinfo
