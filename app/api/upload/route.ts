@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     // Convert every chunk into an embedding vector
     // These vectors will be used for semantic/vector search
-    const vectors = await embedTexts(chunks);
+    const vectors = await embedTexts(chunks, "RETRIEVAL_DOCUMENT");
 
     // If a document with the same file name was indexed before, find
     // its docId(s) and remove those first

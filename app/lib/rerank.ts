@@ -3,10 +3,7 @@ import {
   AutoModelForSequenceClassification,
 } from "@huggingface/transformers";
 import { SearchResult } from "./types";
-
-// Selects which reranking implementation to use
-// local or jina
-const RERANK_PROVIDER = (process.env.RERANK_PROVIDER ?? "local").toLowerCase();
+import { env } from "./config";
 
 // Local cross-encoder model used for reranking.
 // This model receives both the query and document together
@@ -90,7 +87,7 @@ export async function rerankChunks(
   if (chunks.length === 0) return [];
 
   // Use the configured reranking provider.
-  return RERANK_PROVIDER === "jina"
+  return env.rerankProvider === "jina"
     ? rerankViaJina(query, chunks, topN)
     : rerankLocally(query, chunks, topN);
 }
@@ -184,13 +181,10 @@ async function rerankViaJina(
   chunks: SearchResult[],
   topN: number,
 ): Promise<SearchResult[]> {
-  const apiKey = process.env.JINA_RERANKING_API_KEY;
+  const apiKey = env.jinaRerankingApiKey;
   if (!apiKey) {
     throw new Error("JINA_RERANKING_API_KEY environment variable is not set");
   }
-
-  const model =
-    process.env.JINA_RERANK_MODEL ?? "jina-reranker-v2-base-multilingual";
 
   const res = await fetch("https://api.jina.ai/v1/rerank", {
     method: "POST",
@@ -199,7 +193,7 @@ async function rerankViaJina(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model,
+      model: env.jinaRerankModel,
       query,
       documents: chunks.map((c) => c.text),
       top_n: Math.min(topN, chunks.length),

@@ -1,9 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { SearchResult } from "./types";
-
-// Gemini model used to generate the final answer.
-// Can change it using the GEMINI_MODEL environment variable.
-const DEFAULT_MODEL = "gemini-2.5-flash";
+import { env } from "./config";
 
 /**
  * Creates the prompt that will be sent to Gemini.
@@ -60,12 +57,11 @@ export async function* streamAnswer(
   query: string,
   contexts: SearchResult[],
 ): AsyncGenerator<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = env.geminiApiKey;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY environment variable is not set");
   }
 
-  const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL;
   const ai = new GoogleGenAI({ apiKey });
 
   // Build the prompt using the user's question and retrieved chunks.
@@ -73,7 +69,7 @@ export async function* streamAnswer(
 
   // Gemini generates the answer as a stream.
   const stream = await ai.models.generateContentStream({
-    model: modelName,
+    model: env.geminiModel,
     contents: prompt,
   });
 

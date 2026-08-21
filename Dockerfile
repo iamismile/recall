@@ -8,10 +8,11 @@ COPY . .
 RUN npm run build
 
 # Bake ML models into the image so cold starts don't re-download them.
-# Set WARM_RERANKER=true to also bake the local cross-encoder reranker
-# (not needed when using RERANK_PROVIDER=jina).
+# Set WARM_EMBEDDINGS=true / WARM_RERANKER=true to bake the local models
+# (not needed when using EMBED_PROVIDER=gemini / RERANK_PROVIDER=jina).
+ARG WARM_EMBEDDINGS=false
 ARG WARM_RERANKER=false
-ENV WARM_RERANKER=${WARM_RERANKER}
+ENV WARM_EMBEDDINGS=${WARM_EMBEDDINGS} WARM_RERANKER=${WARM_RERANKER}
 RUN node scripts/warm-models.mjs
 
 FROM node:20-slim

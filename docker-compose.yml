@@ -3,7 +3,8 @@ services:
     build:
       context: .
       args:
-        WARM_RERANKER: "false"
+        WARM_EMBEDDINGS: "true"
+        WARM_RERANKER: "true"
     image: recall
     ports:
       - "3001:3000"

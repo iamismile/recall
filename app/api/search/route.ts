@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert the user's query into an embedding vector
-    const queryVector = (await embedTexts([query]))[0];
+    const queryVector = (await embedTexts([query], "RETRIEVAL_QUERY"))[0];
 
     // Retrieve relevant document chunks using hybrid search.
     // Vector Search: Finds chunks with similar meaning.
